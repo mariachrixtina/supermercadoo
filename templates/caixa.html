@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Caixa - Supermercado</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 30px;
+      }
+      h1,
+      h2 {
+        color: #333;
+      }
+      input,
+      button {
+        padding: 8px;
+        margin: 5px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 20px;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Caixa do Supermercado</h1>
+    <form id="formCaixa">
+      <input
+        type="text"
+        id="nomeProduto"
+        placeholder="Nome do Produto"
+        required
+      />
+      <input
+        type="number"
+        id="quantidadeProduto"
+        placeholder="Quantidade"
+        value="1"
+        min="1"
+        required
+      />
+      <button type="submit">Adicionar</button>
+    </form>
+
+    <h2>Itens da Compra</h2>
+    <table id="tabelaCarrinho">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th>Quantidade</th>
+          <th>Preço Unitário</th>
+          <th>Subtotal</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <h3>Total: R$ <span id="totalCompra">0.00</span></h3>
+    <label for="desconto">Desconto (%):</label>
+    <input type="number" id="desconto" value="0" min="0" max="100" />
+    <button type="button" onclick="finalizarCompra()">Finalizar Compra</button>
+    <label for="metodoPagamento">Forma de Pagamento:</label>
+    <select id="metodoPagamento">
+      <option value="dinheiro">Dinheiro</option>
+      <option value="cartao">Cartão</option>
+      <option value="pix">PIX</option>
+    </select>
+
+    <div id="campoDinheiro" style="display: none">
+      <label for="valorPago">Valor Pago (Dinheiro):</label>
+      <input type="number" id="valorPago" min="0" step="0.01" />
+    </div>
+
+    <script>
+      // Verificando se o DOM está completamente carregado
+      document.addEventListener("DOMContentLoaded", function () {
+        let carrinho = [];
+
+        document
+          .getElementById("formCaixa")
+          .addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const nome = document.getElementById("nomeProduto").value;
+            const qtd = parseInt(
+              document.getElementById("quantidadeProduto").value
+            );
+
+            const res = await fetch("/estoque/produtos");
+            const produtos = await res.json();
+            const produto = produtos.find(
+              (p) => p.nome.toLowerCase() === nome.toLowerCase()
+            );
+
+            if (!produto) {
+              alert("Produto não encontrado!");
+              return;
+            }
+
+            carrinho.push({
+              nome: produto.nome,
+              quantidade: qtd,
+              preco: produto.preco,
+              subtotal: qtd * produto.preco,
+            });
+
+            atualizarTabela();
+            document.getElementById("formCaixa").reset();
+          });
+
+        function atualizarTabela() {
+          const tbody = document.querySelector("#tabelaCarrinho tbody");
+          tbody.innerHTML = "";
+          let total = 0;
+          carrinho.forEach((item) => {
+            total += item.subtotal;
+            const row = `<tr>
+                      <td>${item.nome}</td>
+                      <td>${item.quantidade}</td>
+                      <td>R$ ${item.preco.toFixed(2)}</td>
+                      <td>R$ ${item.subtotal.toFixed(2)}</td>
+                  </tr>`;
+            tbody.innerHTML += row;
+          });
+          document.getElementById("totalCompra").textContent = total.toFixed(2);
+        }
+
+        function finalizarCompra() {
+          let total = carrinho.reduce((acc, item) => acc + item.subtotal, 0);
+          const desconto =
+            parseFloat(document.getElementById("desconto").value) || 0;
+          const totalComDesconto = total - (total * desconto) / 100;
+          const metodo = document.getElementById("metodoPagamento").value;
+
+          let troco = 0;
+          if (metodo === "dinheiro") {
+            const pago = parseFloat(document.getElementById("valorPago").value);
+            if (isNaN(pago) || pago < totalComDesconto) {
+              alert("Valor pago insuficiente.");
+              return;
+            }
+            troco = pago - totalComDesconto;
+          }
+
+          fetch("/registrar-venda", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              total: totalComDesconto.toFixed(2),
+              desconto: desconto,
+              metodo_pagamento: metodo,
+              troco: troco.toFixed(2),
+              itens: carrinho,
+            }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              alert(
+                data.mensagem +
+                  (troco > 0 ? ` | Troco: R$ ${troco.toFixed(2)}` : "")
+              );
+              carrinho = [];
+              atualizarTabela();
+              document.getElementById("desconto").value = 0;
+              document.getElementById("valorPago").value = "";
+            });
+        }
+      });
+    </script>
+  </body>
+</html>

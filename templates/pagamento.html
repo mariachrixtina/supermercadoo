@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Escolha o Método de Pagamento</h1>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('caixa.caixa') }}">Caixa</a></li>
+                <li><a href="{{ url_for('ecommerce.catalogo') }}">Catálogo</a></li>
+                <li><a href="{{ url_for('estoque.listar_produtos_view') }}">Estoque</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section>
+        <h2>Opções de Pagamento</h2>
+        <form action="/processar-pagamento" method="POST">
+            <label for="metodo">Escolha um método de pagamento:</label>
+            <select name="metodo" id="metodo">
+                <option value="dinheiro">Dinheiro</option>
+                <option value="cartao">Cartão</option>
+                <option value="pix">PIX</option>
+            </select>
+            <input type="text" name="valor" placeholder="Digite o valor" required>
+            <button type="submit">Confirmar Pagamento</button>
+        </form>
+    </section>
+
+    <footer>
+        <p>&copy; 2025 Supermercado</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
